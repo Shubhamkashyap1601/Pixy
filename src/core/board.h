@@ -6,15 +6,21 @@
 #include "piece.h"
 #include "move.h"
 #include <string>
+#include <unordered_map>
 
 
 enum class GameResult {
     Ongoing,
     Checkmate,
+    FiftyMoveRule,
+    ThreefoldRepetition,
     Stalemate
 };
 
 class Board {
+
+    int halfmoveClock = 0; 
+    std::unordered_map<std::string, int> positionHistory;
     public:
         Board();
         ~Board();
@@ -41,8 +47,11 @@ class Board {
         bool isCheckmate(PieceColor color) const;
         bool isStalemate(PieceColor) const;
         bool hasLegalMoves(PieceColor) const;
+        void recordPosition();
+        bool isThreefoldRepetition() const;
+        void resetPositionHistory();
         GameResult getGameResult() const;
-
+        std::string generatePositionKey() const;
 
     private:
         Piece* board[8][8];
