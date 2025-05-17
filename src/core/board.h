@@ -7,6 +7,13 @@
 #include "move.h"
 #include <string>
 
+
+enum class GameResult {
+    Ongoing,
+    Checkmate,
+    Stalemate
+};
+
 class Board {
     public:
         Board();
@@ -30,6 +37,12 @@ class Board {
         void setKingMoved(PieceColor color);
         void setRookMoved(PieceColor color, bool kingside);
         bool isValidCastlingMove(int fromRow, int fromCol, int toRow, int toCol, PieceColor color);
+
+        bool isCheckmate(PieceColor color) const;
+        bool isStalemate(PieceColor) const;
+        bool hasLegalMoves(PieceColor) const;
+        GameResult getGameResult() const;
+
 
     private:
         Piece* board[8][8];

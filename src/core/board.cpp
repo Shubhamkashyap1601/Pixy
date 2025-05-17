@@ -269,11 +269,11 @@ bool Board::isInCheck(PieceColor kingColor) const {
                 board[row][col]->getColor() == kingColor) {
                 kingRow = row;
                 kingCol = col;
-                break;
+                goto foundKing;
             }
         }
     }
-
+    foundKing:
     if (kingRow == -1) return false;
 
     for (int row = 0; row < 8; ++row) {
@@ -445,4 +445,40 @@ bool Board::isValidCastlingMove(int fromRow, int fromCol, int toRow, int toCol, 
         }
     }
     return false;
+}
+
+bool Board::isCheckmate(PieceColor color) const {
+    return isInCheck(color) && !hasLegalMoves(color);
+}
+
+bool Board::isStalemate(PieceColor color) const {
+    return !isInCheck(color) && !hasLegalMoves(color);
+}
+
+bool Board::hasLegalMoves(PieceColor color) const {
+    for (int r = 0; r < 8; ++r) {
+        for (int c = 0; c < 8; ++c) {
+            Piece* piece = board[r][c];
+            if (piece && piece->getColor() == color) {
+                for (int destR = 0; destR < 8; ++destR) {
+                    for (int destC = 0; destC < 8; ++destC) {
+                        if (r == destR && c == destC) continue;
+                        
+                        if (piece->isValidMove(r, c, destR, destC, const_cast<Piece* (*)[8]>(board))) {
+                            if (!isInCheckAfterMove(r, c, destR, destC, color)) {
+                                return true;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return false;
+}
+
+GameResult Board::getGameResult() const {
+    if (isCheckmate(currentTurn)) return GameResult::Checkmate;
+    if (isStalemate(currentTurn)) return GameResult::Stalemate;
+    return GameResult::Ongoing;
 }
