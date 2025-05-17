@@ -158,6 +158,8 @@ bool Board::movePiece(int fromRow, int fromCol, int toRow, int toCol) {
         lastMove = Move(fromRow, fromCol, toRow, toCol, piece);
 
         std::cout << "Castling executed!\n";
+        currentTurn = (currentTurn == PieceColor::WHITE) ? PieceColor::BLACK : PieceColor::WHITE;
+
         return true;
     }
 
@@ -205,17 +207,15 @@ bool Board::movePiece(int fromRow, int fromCol, int toRow, int toCol) {
             std::cin >> choice;
             choice = std::toupper(choice);
 
+            PieceColor color = piece->getColor();
             delete piece;
 
             switch (choice) {
-                case 'Q': piece = new Queen(board[toRow][toCol]->getColor()); break;
-                case 'R': piece = new Rook(board[toRow][toCol]->getColor()); break;
-                case 'B': piece = new Bishop(board[toRow][toCol]->getColor()); break;
-                case 'N': piece = new Knight(board[toRow][toCol]->getColor()); break;
-                default:
-                    std::cout << "Invalid choice, promoting to Queen by default.\n";
-                    piece = new Queen(board[toRow][toCol]->getColor());
-                    break;
+                case 'Q': piece = new Queen(color); break;
+                case 'R': piece = new Rook(color); break;
+                case 'B': piece = new Bishop(color); break;
+                case 'N': piece = new Knight(color); break;
+                default: piece = new Queen(color); break;
             }
 
             board[toRow][toCol] = piece;
