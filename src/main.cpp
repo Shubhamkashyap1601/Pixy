@@ -66,7 +66,7 @@ bool parseMove(const std::string& input, int& fromRow, int& fromCol, int& toRow,
 
 int main() {
     Board board;
-    board.loadFEN("7k/5Q2/6K1/8/8/8/8/8 b - - 0 1");
+    board.loadFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
     board.printBoard();
 
     GameResult result = board.getGameResult();
