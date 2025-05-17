@@ -92,15 +92,13 @@ void Board::printBoard() const {
 bool Board::movePiece(int fromRow, int fromCol, int toRow, int toCol) {
 
     Piece* piece = board[fromRow][fromCol];
-    
-    if (piece->getColor() != currentTurn) {
-        std::cout << "It's not " << (piece->getColor() == PieceColor::WHITE ? "Black" : "White") << "'s turn!\n";
-        return false;
-    }
-    
-
     if (!piece) {
         std::cout << "Invalid move (no piece at source)." << std::endl;
+        return false;
+    }
+
+    if (piece->getColor() != currentTurn) {
+        std::cout << "It's not " << (currentTurn == PieceColor::WHITE ? "White" : "Black") << "'s turn!\n";
         return false;
     }
 
@@ -113,56 +111,57 @@ bool Board::movePiece(int fromRow, int fromCol, int toRow, int toCol) {
     }
 
 
-if (piece->getType() == PieceType::KING && std::abs(toCol - fromCol) == 2 && fromRow == toRow) {
-    // bool isWhite = piece->getColor() == PieceColor::WHITE;
-    bool isKingside = toCol > fromCol;
-    int row = fromRow;
-    int rookCol = isKingside ? 7 : 0;
-    int rookDestCol = isKingside ? 5 : 3;
-    int step = isKingside ? 1 : -1;
+    if (piece->getType() == PieceType::KING && std::abs(toCol - fromCol) == 2 && fromRow == toRow) {
+        bool isKingside = toCol > fromCol;
+        int row = fromRow;
+        int rookCol = isKingside ? 7 : 0;
+        int rookDestCol = isKingside ? 5 : 3;
+        int step = isKingside ? 1 : -1;
 
-    for (int c = fromCol + step; c != rookCol; c += step)
-        if (board[row][c]) {
-            std::cout << "Castling blocked: path not clear.\n";
-            return false;
-        }
-
-    if (isInCheck(piece->getColor())) {
-        std::cout << "Castling invalid: King is currently in check.\n";
-        return false;
-    }
-
-    Piece* origKing = board[row][fromCol];
-    for (int i = 1; i <= 2; ++i) {
-        int c = fromCol + step * i;
-        Piece* origDest = board[row][c];
-
-        board[row][fromCol] = nullptr;
-        board[row][c] = origKing;
+        for (int c = fromCol + step; c != rookCol; c += step)
+            if (board[row][c]) {
+                std::cout << "Castling blocked: path not clear.\n";
+                return false;
+            }
 
         if (isInCheck(piece->getColor())) {
-            board[row][c] = origDest;
-            board[row][fromCol] = origKing;
-            std::cout << "Castling invalid: King would pass through check.\n";
+            std::cout << "Castling invalid: King is currently in check.\n";
             return false;
         }
 
-        board[row][c] = origDest;
-        board[row][fromCol] = origKing;
+        Piece* origKing = board[row][fromCol];
+        for (int i = 1; i <= 2; ++i) {
+            int c = fromCol + step * i;
+            Piece* origDest = board[row][c];
+
+            board[row][fromCol] = nullptr;
+            board[row][c] = origKing;
+
+            if (isInCheck(piece->getColor())) {
+                board[row][c] = origDest;
+                board[row][fromCol] = origKing;
+                std::cout << "Castling invalid: King would pass through check.\n";
+                return false;
+            }
+
+            board[row][c] = origDest;
+            board[row][fromCol] = origKing;
+        }
+
+        board[row][toCol] = piece;
+        board[row][fromCol] = nullptr;
+
+        Piece* rook = board[row][rookCol];
+        board[row][rookDestCol] = rook;
+        board[row][rookCol] = nullptr;
+
+        lastMove = Move(fromRow, fromCol, toRow, toCol, piece);
+
+        std::cout << "Castling executed!\n";
+        currentTurn = (currentTurn == PieceColor::WHITE) ? PieceColor::BLACK : PieceColor::WHITE;
+
+        return true;
     }
-
-    board[row][toCol] = piece;
-    board[row][fromCol] = nullptr;
-
-    Piece* rook = board[row][rookCol];
-    board[row][rookDestCol] = rook;
-    board[row][rookCol] = nullptr;
-
-    lastMove = Move(fromRow, fromCol, toRow, toCol, piece);
-
-    std::cout << "Castling executed!\n";
-    return true;
-}
 
     if (!isEnPassant && !piece->isValidMove(fromRow, fromCol, toRow, toCol, board)) {
         std::cout << "Invalid move for this piece!" << std::endl;
@@ -208,17 +207,15 @@ if (piece->getType() == PieceType::KING && std::abs(toCol - fromCol) == 2 && fro
             std::cin >> choice;
             choice = std::toupper(choice);
 
+            PieceColor color = piece->getColor();
             delete piece;
 
             switch (choice) {
-                case 'Q': piece = new Queen(board[toRow][toCol]->getColor()); break;
-                case 'R': piece = new Rook(board[toRow][toCol]->getColor()); break;
-                case 'B': piece = new Bishop(board[toRow][toCol]->getColor()); break;
-                case 'N': piece = new Knight(board[toRow][toCol]->getColor()); break;
-                default:
-                    std::cout << "Invalid choice, promoting to Queen by default.\n";
-                    piece = new Queen(board[toRow][toCol]->getColor());
-                    break;
+                case 'Q': piece = new Queen(color); break;
+                case 'R': piece = new Rook(color); break;
+                case 'B': piece = new Bishop(color); break;
+                case 'N': piece = new Knight(color); break;
+                default: piece = new Queen(color); break;
             }
 
             board[toRow][toCol] = piece;
@@ -226,7 +223,7 @@ if (piece->getType() == PieceType::KING && std::abs(toCol - fromCol) == 2 && fro
     }
 
     lastMove = Move(fromRow, fromCol, toRow, toCol, piece);
-
+    recordPosition();
     if (piece->getType() == PieceType::KING) {
         if (piece->getColor() == PieceColor::WHITE) hasWhiteKingMoved = true;
         else hasBlackKingMoved = true;
@@ -240,6 +237,13 @@ if (piece->getType() == PieceType::KING && std::abs(toCol - fromCol) == 2 && fro
             if (fromRow == 0 && fromCol == 0) hasBlackQueensideRookMoved = true;
             else if (fromRow == 0 && fromCol == 7) hasBlackKingsideRookMoved = true;
         }
+    }
+
+    // Update halfmoveClock for 50-move rule
+    if (piece->getType() == PieceType::PAWN || captured != nullptr) {
+        halfmoveClock = 0;
+    } else {
+        ++halfmoveClock;
     }
     currentTurn = (currentTurn == PieceColor::WHITE) ? PieceColor::BLACK : PieceColor::WHITE;
 
@@ -322,7 +326,6 @@ Board::Board(const Board& other) : lastMove(other.lastMove) {
         }
     }
     currentTurn = other.currentTurn;
-    // Copy any other relevant state
 }
 
 Board& Board::operator=(const Board& other) {
@@ -354,11 +357,8 @@ void Board::loadFEN(const std::string& fen) {
     std::string halfmoveClockStr, fullmoveNumberStr;
 
     ss >> boardPart >> activeColor >> castling >> enPassant >> halfmoveClockStr >> fullmoveNumberStr;
+    halfmoveClock = std::stoi(halfmoveClockStr);
 
-    // int halfmoveClock = std::stoi(halfmoveClockStr);
-    // int fullmoveNumber = std::stoi(fullmoveNumberStr);
-
-    // Clear the board
     for (int r = 0; r < 8; ++r)
         for (int c = 0; c < 8; ++c) {
             delete board[r][c];
@@ -477,8 +477,77 @@ bool Board::hasLegalMoves(PieceColor color) const {
     return false;
 }
 
+void Board::recordPosition() {
+    std::string key = generatePositionKey();
+    positionHistory[key]++;
+}
+
+bool Board::isThreefoldRepetition() const {
+    std::string key = generatePositionKey();
+    auto it = positionHistory.find(key);
+    return (it != positionHistory.end() && it->second >= 3);
+}
+
+void Board::resetPositionHistory() {
+    positionHistory.clear();
+    std::string key = generatePositionKey();
+    positionHistory[key] = 1;
+}
+
+
 GameResult Board::getGameResult() const {
     if (isCheckmate(currentTurn)) return GameResult::Checkmate;
     if (isStalemate(currentTurn)) return GameResult::Stalemate;
+    if (halfmoveClock >= 100) return GameResult::FiftyMoveRule;
+    if (isThreefoldRepetition()) return GameResult::ThreefoldRepetition;
     return GameResult::Ongoing;
 }
+
+std::string Board::generatePositionKey() const {
+    std::string key;
+
+    for (int r = 0; r < 8; ++r) {
+        for (int c = 0; c < 8; ++c) {
+            Piece* p = board[r][c];
+            if (!p) {
+                key += ".";
+            } else {
+                char symbol;
+                switch (p->getType()) {
+                    case PieceType::PAWN: symbol = 'P'; break;
+                    case PieceType::ROOK: symbol = 'R'; break;
+                    case PieceType::KNIGHT: symbol = 'N'; break;
+                    case PieceType::BISHOP: symbol = 'B'; break;
+                    case PieceType::QUEEN: symbol = 'Q'; break;
+                    case PieceType::KING: symbol = 'K'; break;
+                    default: symbol = '.'; break;
+                }
+                key += (p->getColor() == PieceColor::WHITE) ? symbol : std::tolower(symbol);
+            }
+        }
+    }
+
+    key += (currentTurn == PieceColor::WHITE) ? " w" : " b";
+
+    if (!hasWhiteKingMoved && !hasWhiteKingsideRookMoved) key += " K";
+    if (!hasWhiteKingMoved && !hasWhiteQueensideRookMoved) key += " Q";
+    if (!hasBlackKingMoved && !hasBlackKingsideRookMoved) key += " k";
+    if (!hasBlackKingMoved && !hasBlackQueensideRookMoved) key += " q";
+
+    if (lastMove.pieceMoved &&
+        lastMove.pieceMoved->getType() == PieceType::PAWN &&
+        std::abs(lastMove.toRow - lastMove.fromRow) == 2) {
+        
+        int epRow = (lastMove.fromRow + lastMove.toRow) / 2;
+        int epCol = lastMove.fromCol;
+        char file = 'a' + epCol;
+        char rank = '8' - epRow;
+        key += " ep";
+        key += file;
+        key += rank;
+    }
+
+
+    return key;
+}
+

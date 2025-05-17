@@ -76,6 +76,12 @@ int main() {
     } else if (result == GameResult::Stalemate) {
         std::cout << "Stalemate! It's a draw.\n";
         return 0;
+    } else if (result == GameResult::FiftyMoveRule) {
+        std::cout << "Draw by fifty-move rule.\n";
+        return 0;
+    } else if (result == GameResult::ThreefoldRepetition) {
+        std::cout << "Draw by threefold repetition.\n";
+        return 0;
     }
 
     std::string input;
@@ -99,6 +105,12 @@ int main() {
                     break;
                 } else if (result == GameResult::Stalemate) {
                     std::cout << "Stalemate! It's a draw.\n";
+                    break;
+                } else if (result == GameResult::FiftyMoveRule) {
+                    std::cout << "Draw by fifty-move rule.\n";
+                    break;
+                } else if (result == GameResult::ThreefoldRepetition) {
+                    std::cout << "Draw by threefold repetition.\n";
                     break;
                 }
             } else {
