@@ -27,7 +27,7 @@ class Board {
         void setupBoard();
         void printBoard() const;
         bool movePiece(int fromRow, int fromCol, int toRow, int toCol);
-        Piece* getPiece(int row, int col);
+        Piece* getPiece(int row, int col) const;
         Piece* const (*getBoard() const)[8];
         Move getLastMove() const;
         bool isInCheck(PieceColor kingColor) const;
@@ -52,6 +52,8 @@ class Board {
         void resetPositionHistory();
         GameResult getGameResult() const;
         std::string generatePositionKey() const;
+        bool isBotPlaying = true;
+        void printMessage(const std::string& msg);
 
     private:
         Piece* board[8][8];

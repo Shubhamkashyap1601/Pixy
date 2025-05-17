@@ -5,6 +5,7 @@
 #include "core/move_generator.h"
 #include <fstream>
 #include <sstream>
+#include "ai/bot.h"
 
 // Function to test loading FEN from a file
 void testFENLoading(const std::string& filename) {
@@ -66,59 +67,59 @@ bool parseMove(const std::string& input, int& fromRow, int& fromCol, int& toRow,
 
 int main() {
     Board board;
+    Bot bot;
+
     board.loadFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
     board.printBoard();
 
-    GameResult result = board.getGameResult();
-    if (result == GameResult::Checkmate) {
-        std::cout << "Checkmate! " << (board.getCurrentTurn() == PieceColor::WHITE ? "Black" : "White") << " wins.\n";
-        return 0;
-    } else if (result == GameResult::Stalemate) {
-        std::cout << "Stalemate! It's a draw.\n";
-        return 0;
-    } else if (result == GameResult::FiftyMoveRule) {
-        std::cout << "Draw by fifty-move rule.\n";
-        return 0;
-    } else if (result == GameResult::ThreefoldRepetition) {
-        std::cout << "Draw by threefold repetition.\n";
-        return 0;
-    }
-
     std::string input;
     while (true) {
-        std::cout << "\nEnter your move (e.g., e2 e4) or 'q' to quit: ";
-        std::getline(std::cin, input);
-
-        if (input == "q" || input == "Q") {
-            std::cout << "Goodbye!\n";
+        GameResult result = board.getGameResult();
+        if (result == GameResult::Checkmate) {
+            std::cout << "Checkmate! " << (board.getCurrentTurn() == PieceColor::WHITE ? "Black" : "White") << " wins.\n";
+            break;
+        } else if (result == GameResult::Stalemate) {
+            std::cout << "Stalemate! It's a draw.\n";
+            break;
+        } else if (result == GameResult::FiftyMoveRule) {
+            std::cout << "Draw by fifty-move rule.\n";
+            break;
+        } else if (result == GameResult::ThreefoldRepetition) {
+            std::cout << "Draw by threefold repetition.\n";
             break;
         }
 
-        int fr, fc, tr, tc;
-        if (parseMove(input, fr, fc, tr, tc)) {
-            if (board.movePiece(fr, fc, tr, tc)) {
-                board.printBoard();
+        if (board.getCurrentTurn() == PieceColor::WHITE) {
+            std::cout << "\nEnter your move (e.g., e2 e4) or 'q' to quit: ";
+            std::getline(std::cin, input);
+            if (input == "q" || input == "Q") {
+                std::cout << "Goodbye!\n";
+                break;
+            }
 
-                result = board.getGameResult();
-                if (result == GameResult::Checkmate) {
-                    std::cout << "Checkmate! " << (board.getCurrentTurn() == PieceColor::WHITE ? "Black" : "White") << " wins.\n";
-                    break;
-                } else if (result == GameResult::Stalemate) {
-                    std::cout << "Stalemate! It's a draw.\n";
-                    break;
-                } else if (result == GameResult::FiftyMoveRule) {
-                    std::cout << "Draw by fifty-move rule.\n";
-                    break;
-                } else if (result == GameResult::ThreefoldRepetition) {
-                    std::cout << "Draw by threefold repetition.\n";
-                    break;
+            int fr, fc, tr, tc;
+            if (parseMove(input, fr, fc, tr, tc)) {
+                if (!board.movePiece(fr, fc, tr, tc)) {
+                    std::cout << "Invalid move.\n";
                 }
             } else {
-                std::cout << "Invalid move (no piece at source).\n";
+                std::cout << "Invalid input format.\n";
             }
+
         } else {
-            std::cout << "Invalid input format.\n";
+            std::cout << "Bot is thinking...\n";
+            board.isBotPlaying = true;
+            try {
+                Move bestMove = bot.findBestMove(board, 5); // Adjust depth as needed
+                board.movePiece(bestMove.fromRow, bestMove.fromCol, bestMove.toRow, bestMove.toCol);
+            } catch (const std::exception& e) {
+                std::cout << "Bot failed to find move: " << e.what() << '\n';
+                break;
+            }
+            board.isBotPlaying = false;
         }
+
+        board.printBoard();
     }
 
     return 0;
