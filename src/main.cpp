@@ -65,12 +65,18 @@ bool parseMove(const std::string& input, int& fromRow, int& fromCol, int& toRow,
 
 
 int main() {
-    testFENLoading("C:/Users/shubh/Desktop/Pixy/src/fen_test_cases.txt");
-
     Board board;
     board.loadFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
     board.printBoard();
-    std::cout << "Legal moves available: " << MoveGenerator::countAllLegalMoves(board) << std::endl;
+
+    GameResult result = board.getGameResult();
+    if (result == GameResult::Checkmate) {
+        std::cout << "Checkmate! " << (board.getCurrentTurn() == PieceColor::WHITE ? "Black" : "White") << " wins.\n";
+        return 0;
+    } else if (result == GameResult::Stalemate) {
+        std::cout << "Stalemate! It's a draw.\n";
+        return 0;
+    }
 
     std::string input;
     while (true) {
@@ -86,6 +92,15 @@ int main() {
         if (parseMove(input, fr, fc, tr, tc)) {
             if (board.movePiece(fr, fc, tr, tc)) {
                 board.printBoard();
+
+                result = board.getGameResult();
+                if (result == GameResult::Checkmate) {
+                    std::cout << "Checkmate! " << (board.getCurrentTurn() == PieceColor::WHITE ? "Black" : "White") << " wins.\n";
+                    break;
+                } else if (result == GameResult::Stalemate) {
+                    std::cout << "Stalemate! It's a draw.\n";
+                    break;
+                }
             } else {
                 std::cout << "Invalid move (no piece at source).\n";
             }
