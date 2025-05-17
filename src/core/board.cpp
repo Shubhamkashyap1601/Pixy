@@ -10,6 +10,13 @@
 #include <string>
 #include <sstream>
 
+void Board::printMessage(const std::string& msg) {
+    if (!isBotPlaying) {
+        std::cout << msg << std::endl;
+    }
+}
+
+
 Board::Board() : lastMove(0, 0, 0, 0, nullptr) {
     for (int r = 0; r < 8; ++r)
         for (int c = 0; c < 8; ++c)
@@ -90,27 +97,47 @@ void Board::printBoard() const {
 }
 
 bool Board::movePiece(int fromRow, int fromCol, int toRow, int toCol) {
-
     Piece* piece = board[fromRow][fromCol];
     if (!piece) {
-        std::cout << "Invalid move (no piece at source)." << std::endl;
+        printMessage("Invalid move (no piece at source).");
         return false;
     }
 
     if (piece->getColor() != currentTurn) {
-        std::cout << "It's not " << (currentTurn == PieceColor::WHITE ? "White" : "Black") << "'s turn!\n";
+        printMessage(std::string("It's not ") + (currentTurn == PieceColor::WHITE ? "White" : "Black") + "'s turn!");
         return false;
     }
 
     bool isEnPassant = false;
+    int enPassantCapturedRow = -1, enPassantCapturedCol = -1;
+
     if (piece->getType() == PieceType::PAWN) {
         Pawn* pawn = static_cast<Pawn*>(piece);
-        if (lastMove.pieceMoved && pawn->canEnPassant(fromRow, fromCol, toRow, toCol, board, lastMove)) {
-            isEnPassant = true;
+
+        // En passant detection:
+        if (lastMove.pieceMoved && lastMove.pieceMoved->getType() == PieceType::PAWN) {
+            int lastFromRow = lastMove.fromRow;
+            int lastToRow = lastMove.toRow;
+            int lastToCol = lastMove.toCol;
+
+            // Check if last move was a two-step pawn move
+            if (std::abs(lastFromRow - lastToRow) == 2) {
+                // If current pawn tries to move diagonally behind that pawn
+                int direction = (pawn->getColor() == PieceColor::WHITE) ? -1 : 1;
+                if (toRow == fromRow + direction &&
+                    std::abs(toCol - fromCol) == 1 &&
+                    toRow == lastToRow &&
+                    toCol == lastToCol) {
+
+                    isEnPassant = true;
+                    enPassantCapturedRow = lastToRow;
+                    enPassantCapturedCol = lastToCol;
+                }
+            }
         }
     }
 
-
+    // Castling logic with all fixes included
     if (piece->getType() == PieceType::KING && std::abs(toCol - fromCol) == 2 && fromRow == toRow) {
         bool isKingside = toCol > fromCol;
         int row = fromRow;
@@ -118,17 +145,57 @@ bool Board::movePiece(int fromRow, int fromCol, int toRow, int toCol) {
         int rookDestCol = isKingside ? 5 : 3;
         int step = isKingside ? 1 : -1;
 
-        for (int c = fromCol + step; c != rookCol; c += step)
-            if (board[row][c]) {
-                std::cout << "Castling blocked: path not clear.\n";
-                return false;
-            }
-
-        if (isInCheck(piece->getColor())) {
-            std::cout << "Castling invalid: King is currently in check.\n";
+        // Check rook presence and color
+        Piece* rook = board[row][rookCol];
+        if (!rook || rook->getType() != PieceType::ROOK || rook->getColor() != piece->getColor()) {
+            printMessage("Castling invalid: Rook missing or wrong color.");
             return false;
         }
 
+        // Check if king or rook has moved
+        if (piece->getColor() == PieceColor::WHITE) {
+            if (hasWhiteKingMoved) {
+                printMessage("Castling invalid: White king has already moved.");
+                return false;
+            }
+            if (isKingside && hasWhiteKingsideRookMoved) {
+                printMessage("Castling invalid: White kingside rook has already moved.");
+                return false;
+            }
+            if (!isKingside && hasWhiteQueensideRookMoved) {
+                printMessage("Castling invalid: White queenside rook has already moved.");
+                return false;
+            }
+        } else {
+            if (hasBlackKingMoved) {
+                printMessage("Castling invalid: Black king has already moved.");
+                return false;
+            }
+            if (isKingside && hasBlackKingsideRookMoved) {
+                printMessage("Castling invalid: Black kingside rook has already moved.");
+                return false;
+            }
+            if (!isKingside && hasBlackQueensideRookMoved) {
+                printMessage("Castling invalid: Black queenside rook has already moved.");
+                return false;
+            }
+        }
+
+        // Check if path between king and rook is clear
+        for (int c = fromCol + step; c != rookCol; c += step) {
+            if (board[row][c]) {
+                printMessage("Castling blocked: path not clear.");
+                return false;
+            }
+        }
+
+        // Check if king is currently in check
+        if (isInCheck(piece->getColor())) {
+            printMessage("Castling invalid: King is currently in check.");
+            return false;
+        }
+
+        // Check if king passes through check squares
         Piece* origKing = board[row][fromCol];
         for (int i = 1; i <= 2; ++i) {
             int c = fromCol + step * i;
@@ -140,7 +207,7 @@ bool Board::movePiece(int fromRow, int fromCol, int toRow, int toCol) {
             if (isInCheck(piece->getColor())) {
                 board[row][c] = origDest;
                 board[row][fromCol] = origKing;
-                std::cout << "Castling invalid: King would pass through check.\n";
+                printMessage("Castling invalid: King would pass through check.");
                 return false;
             }
 
@@ -148,74 +215,100 @@ bool Board::movePiece(int fromRow, int fromCol, int toRow, int toCol) {
             board[row][fromCol] = origKing;
         }
 
+        // Perform castling move
         board[row][toCol] = piece;
         board[row][fromCol] = nullptr;
 
-        Piece* rook = board[row][rookCol];
         board[row][rookDestCol] = rook;
         board[row][rookCol] = nullptr;
 
+        // Update castling flags
+        if (piece->getColor() == PieceColor::WHITE) {
+            hasWhiteKingMoved = true;
+            if (isKingside) hasWhiteKingsideRookMoved = true;
+            else hasWhiteQueensideRookMoved = true;
+        } else {
+            hasBlackKingMoved = true;
+            if (isKingside) hasBlackKingsideRookMoved = true;
+            else hasBlackQueensideRookMoved = true;
+        }
+
         lastMove = Move(fromRow, fromCol, toRow, toCol, piece);
 
-        std::cout << "Castling executed!\n";
+        printMessage("Castling executed!");
         currentTurn = (currentTurn == PieceColor::WHITE) ? PieceColor::BLACK : PieceColor::WHITE;
 
         return true;
     }
 
+    // Normal move validation for pieces (except en passant)
     if (!isEnPassant && !piece->isValidMove(fromRow, fromCol, toRow, toCol, board)) {
-        std::cout << "Invalid move for this piece!" << std::endl;
+        printMessage("Invalid move for this piece!");
         return false;
     }
-
 
     Piece* captured = board[toRow][toCol];
 
     if (isEnPassant) {
-        int capturedRow = fromRow;
-        int capturedCol = toCol;
-        captured = board[capturedRow][capturedCol];
-        board[capturedRow][capturedCol] = nullptr;
-        std::cout << "En passant captured!\n";
+        // Remove the captured pawn properly
+        Piece* capturedPawn = board[enPassantCapturedRow][enPassantCapturedCol];
+        if (capturedPawn && capturedPawn->getType() == PieceType::PAWN) {
+            delete capturedPawn;
+            board[enPassantCapturedRow][enPassantCapturedCol] = nullptr;
+            printMessage("En passant captured!");
+        } else {
+            printMessage("En passant capture failed: no pawn to capture.");
+            return false;
+        }
     }
 
+    // Move piece on board
     board[toRow][toCol] = piece;
     board[fromRow][fromCol] = nullptr;
 
+    // Check if move results in own king in check
     if (isInCheck(piece->getColor())) {
+        // Undo move
         board[fromRow][fromCol] = piece;
         board[toRow][toCol] = captured;
 
         if (isEnPassant) {
-            int capturedRow = fromRow;
-            int capturedCol = toCol;
-            board[capturedRow][capturedCol] = captured;
+            board[enPassantCapturedRow][enPassantCapturedCol] = captured;
         }
 
-        std::cout << "Move puts king in check! Invalid.\n";
+        printMessage("Move puts king in check! Invalid.");
         return false;
     }
 
-    if (captured) delete captured;
+    // Delete captured piece if any and not en passant (already deleted above)
+    if (captured && !isEnPassant) delete captured;
 
+    // Handle pawn promotion
     if (piece->getType() == PieceType::PAWN) {
         if ((piece->getColor() == PieceColor::WHITE && toRow == 0) ||
             (piece->getColor() == PieceColor::BLACK && toRow == 7)) {
-            
-            char choice;
-            std::cout << "Promote pawn to (Q, R, B, N): ";
-            std::cin >> choice;
-            choice = std::toupper(choice);
 
             PieceColor color = piece->getColor();
             delete piece;
 
-            switch (choice) {
-                case 'Q': piece = new Queen(color); break;
-                case 'R': piece = new Rook(color); break;
-                case 'B': piece = new Bishop(color); break;
-                case 'N': piece = new Knight(color); break;
-                default: piece = new Queen(color); break;
+            if (isBotPlaying) {
+                piece = new Queen(color);
+            } else {
+                char choice;
+                std::cout << "Promote pawn to (Q, R, B, N): ";
+                std::cin >> choice;
+                choice = std::toupper(choice);
+
+                switch (choice) {
+                    case 'Q': piece = new Queen(color); break;
+                    case 'R': piece = new Rook(color); break;
+                    case 'B': piece = new Bishop(color); break;
+                    case 'N': piece = new Knight(color); break;
+                    default:
+                        printMessage("Invalid choice. Defaulting to Queen.");
+                        piece = new Queen(color);
+                        break;
+                }
             }
 
             board[toRow][toCol] = piece;
@@ -224,11 +317,14 @@ bool Board::movePiece(int fromRow, int fromCol, int toRow, int toCol) {
 
     lastMove = Move(fromRow, fromCol, toRow, toCol, piece);
     recordPosition();
+
+    // Update king moved flags if king moved
     if (piece->getType() == PieceType::KING) {
         if (piece->getColor() == PieceColor::WHITE) hasWhiteKingMoved = true;
         else hasBlackKingMoved = true;
     }
 
+    // Update rook moved flags if rook moved
     if (piece->getType() == PieceType::ROOK) {
         if (piece->getColor() == PieceColor::WHITE) {
             if (fromRow == 7 && fromCol == 0) hasWhiteQueensideRookMoved = true;
@@ -239,12 +335,6 @@ bool Board::movePiece(int fromRow, int fromCol, int toRow, int toCol) {
         }
     }
 
-    // Update halfmoveClock for 50-move rule
-    if (piece->getType() == PieceType::PAWN || captured != nullptr) {
-        halfmoveClock = 0;
-    } else {
-        ++halfmoveClock;
-    }
     currentTurn = (currentTurn == PieceColor::WHITE) ? PieceColor::BLACK : PieceColor::WHITE;
 
     return true;
@@ -255,7 +345,7 @@ Move Board::getLastMove() const {
     return lastMove;
 }
 
-Piece* Board::getPiece(int row, int col) {
+Piece* Board::getPiece(int row, int col) const {
     return board[row][col];
 }
 
