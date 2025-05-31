@@ -70,6 +70,7 @@ int main() {
     Bot bot;
 
     board.loadFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+    // board.loadFEN("rnb1kbnr/pp1ppp1p/2p3p1/q7/2PP4/2N5/PP2PPPP/R1BQKBNR w KQkq - 2 4");
     board.printBoard();
 
     std::string input;
@@ -110,7 +111,7 @@ int main() {
             std::cout << "Bot is thinking...\n";
             board.isBotPlaying = true;
             try {
-                Move bestMove = bot.findBestMove(board, 5); // Adjust depth as needed
+                Move bestMove = bot.findBestMove(board, 3); // Adjust depth as needed
                 board.movePiece(bestMove.fromRow, bestMove.fromCol, bestMove.toRow, bestMove.toCol);
             } catch (const std::exception& e) {
                 std::cout << "Bot failed to find move: " << e.what() << '\n';

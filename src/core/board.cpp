@@ -97,6 +97,12 @@ void Board::printBoard() const {
 }
 
 bool Board::movePiece(int fromRow, int fromCol, int toRow, int toCol) {
+    if (fromRow < 0 || fromRow >= 8 || fromCol < 0 || fromCol >= 8 ||
+        toRow < 0 || toRow >= 8 || toCol < 0 || toCol >= 8) {
+        printMessage("Move coordinates out of bounds!");
+        return false;
+}
+
     Piece* piece = board[fromRow][fromCol];
     if (!piece) {
         printMessage("Invalid move (no piece at source).");
@@ -272,8 +278,17 @@ bool Board::movePiece(int fromRow, int fromCol, int toRow, int toCol) {
         board[fromRow][fromCol] = piece;
         board[toRow][toCol] = captured;
 
+        Piece* capturedPawn = nullptr;
+
         if (isEnPassant) {
-            board[enPassantCapturedRow][enPassantCapturedCol] = captured;
+            // capturedPawn = board[enPassantCapturedRow][enPassantCapturedCol];
+            // if (capturedPawn && capturedPawn->getType() == PieceType::PAWN) {
+            //     delete capturedPawn;
+                board[enPassantCapturedRow][enPassantCapturedCol] = nullptr;
+            // } else {
+            //     printMessage("En passant capture failed: no pawn to capture.");
+            //     return false;
+            // }
         }
 
         printMessage("Move puts king in check! Invalid.");
@@ -408,15 +423,17 @@ Piece *(*Board::getWritableBoard())[8]
     return board;
 }
 
-Board::Board(const Board& other) : lastMove(other.lastMove) {
-    for (int row = 0; row < 8; ++row) {
-        for (int col = 0; col < 8; ++col) {
-            Piece* piece = other.board[row][col];
-            board[row][col] = piece ? piece->clone() : nullptr;
+Board::Board(const Board& other) : lastMove(other.lastMove), currentTurn(other.currentTurn) {
+    for (int r = 0; r < 8; ++r) {
+        for (int c = 0; c < 8; ++c) {
+            if (other.board[r][c])
+                board[r][c] = other.board[r][c]->clone();
+            else
+                board[r][c] = nullptr;
         }
     }
-    currentTurn = other.currentTurn;
 }
+
 
 Board& Board::operator=(const Board& other) {
     if (this == &other) return *this;

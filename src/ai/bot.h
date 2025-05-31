@@ -10,5 +10,7 @@ public:
 
 private:
     int minimax(Board& board, int depth, int alpha, int beta, bool maximizingPlayer);
+        int quiescence(Board& board, int alpha, int beta);
+    std::vector<Move> generateNoisyMoves(Board& board, bool whiteToMove);
     int evaluateBoard(const Board& board);
 };

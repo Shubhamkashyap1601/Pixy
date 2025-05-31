@@ -1,5 +1,5 @@
 CXX = g++
-CXXFLAGS = -std=c++17 -Wall -I./src -mconsole
+CXXFLAGS = -std=c++17 -Wall -g -I./src -mconsole
 SRC = $(wildcard src/**/*.cpp) src/main.cpp
 OBJ = $(SRC:.cpp=.o)
 TARGET = pixy
