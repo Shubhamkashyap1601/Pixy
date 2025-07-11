@@ -140,6 +140,31 @@ int evaluate(const Board& board) {
             int baseValue = pieceValue(piece->getType());
             int positionalValue = getPieceSquareValue(piece->getType(), row, col, piece->getColor());
 
+            // Penalize knights on rim heavily
+            if (piece->getType() == PieceType::KNIGHT) {
+                if (row == 0 || row == 7 || col == 0 || col == 7) {
+                    positionalValue -= 100; // Heavy penalty for knights on rim
+                }
+            }
+            
+            // Penalize early king moves in opening/middlegame
+            if (piece->getType() == PieceType::KING) {
+                // Check if there are still many pieces (opening/middlegame)
+                int totalPieces = 0;
+                for (int r = 0; r < 8; r++) {
+                    for (int c = 0; c < 8; c++) {
+                        if (board.getPiece(r, c)) totalPieces++;
+                    }
+                }
+                if (totalPieces > 20) { // Still in opening/middlegame
+                    bool onStartSquare = (piece->getColor() == PieceColor::WHITE && row == 7 && col == 4) ||
+                                       (piece->getColor() == PieceColor::BLACK && row == 0 && col == 4);
+                    if (!onStartSquare) {
+                        positionalValue -= 200; // Penalty for king not on starting square
+                    }
+                }
+            }
+
             // Center control
             for (int i = 0; i < 4; ++i) {
                 if (row == centerSquares[i][0] && col == centerSquares[i][1]) {

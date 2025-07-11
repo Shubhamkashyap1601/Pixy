@@ -111,7 +111,18 @@ int main() {
             std::cout << "Bot is thinking...\n";
             board.isBotPlaying = true;
             try {
-                Move bestMove = bot.findBestMove(board, 3); // Adjust depth as needed
+                // Adaptive depth: deeper in endgame, shallower in opening for speed
+                int searchDepth = 4;
+                int totalPieces = 0;
+                for (int r = 0; r < 8; r++) {
+                    for (int c = 0; c < 8; c++) {
+                        if (board.getPiece(r, c)) totalPieces++;
+                    }
+                }
+                if (totalPieces > 28) searchDepth = 3; // Opening: faster search  
+                else if (totalPieces < 12) searchDepth = 5; // Endgame: deeper search
+                
+                Move bestMove = bot.findBestMove(board, searchDepth);
                 board.movePiece(bestMove.fromRow, bestMove.fromCol, bestMove.toRow, bestMove.toCol);
             } catch (const std::exception& e) {
                 std::cout << "Bot failed to find move: " << e.what() << '\n';
