@@ -2,6 +2,7 @@
 
 #include "../core/board.h"
 #include "../core/move.h"
+#include <cstdint>
 #include <vector>
 
 class Bot {
